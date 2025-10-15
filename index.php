@@ -6,8 +6,8 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Velkommen til PRG120V-appen</h1>
-    <p>Brukerfunksjoner:</p>
+    <h1>Brukerfunksjoner</h1>
+    <p>Velg en handling nedenfor:</p>
 
     <ul>
         <li><a href="registrer_klasse.php">Registrer klasse</a></li>
