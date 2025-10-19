@@ -8,19 +8,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($kode === '') {
         $err = "Velg en klasse å slette.";
     } else {
-        $stmt = $conn->prepare("DELETE FROM klasse WHERE klassekode = ?");
-        $stmt->bind_param("s", $kode);
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) $ok = "Klasse slettet.";
-            else $err = "Fant ikke klassen.";
+        // 1) Forhåndssjekk: hvor mange studenter peker på denne klassen?
+        $cntStmt = $conn->prepare("SELECT COUNT(*) FROM student WHERE klassekode = ?");
+        $cntStmt->bind_param("s", $kode);
+        $cntStmt->execute();
+        $cntStmt->bind_result($antall);
+        $cntStmt->fetch();
+        $cntStmt->close();
+
+        if ($antall > 0) {
+            // Brukervennlig melding – ingen Fatal
+            $err = "Kan ikke slette: {$antall} student(er) er knyttet til klasse '{$kode}'.";
         } else {
-            // mest sannsynlig pga. fremmednøkkel fra student
-            $err = "Kan ikke slette: finnes det studenter knyttet til denne klassen?";
+            // 2) Forsøk sletting, og håndter FK-feil (1451) hvis noe glipper
+            $stmt = $conn->prepare("DELETE FROM klasse WHERE klassekode = ?");
+            $stmt->bind_param("s", $kode);
+            if ($stmt->execute()) {
+                if ($stmt->affected_rows > 0) {
+                    $ok = "Klasse '{$kode}' ble slettet.";
+                } else {
+                    $err = "Fant ikke klassen.";
+                }
+            } else {
+                // 1451 = foreign key constraint (kan ikke slette forelder med barn)
+                if ($conn->errno == 1451) {
+                    $err = "Kan ikke slette: det finnes studenter som er knyttet til klasse '{$kode}'.";
+                } else {
+                    $err = "Sletting mislyktes. Prøv igjen.";
+                }
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 }
 
+// Hent/oppdater liste til nedtrekksmenyen (refresher etter sletting)
 $list = $conn->query("SELECT klassekode, klassenavn FROM klasse ORDER BY klassekode");
 $klasser = $list ? $list->fetch_all(MYSQLI_ASSOC) : [];
 ?>
@@ -61,3 +83,4 @@ $klasser = $list ? $list->fetch_all(MYSQLI_ASSOC) : [];
   </form>
 </body>
 </html>
+
