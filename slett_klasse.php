@@ -1,86 +1,88 @@
+
+
 <?php
 require_once __DIR__ . '/db.php';
 
 $ok = $err = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $kode = $_POST['klassekode'] ?? '';
-    if ($kode === '') {
-        $err = "Velg en klasse å slette.";
-    } else {
-        // 1) Forhåndssjekk: hvor mange studenter peker på denne klassen?
-        $cntStmt = $conn->prepare("SELECT COUNT(*) FROM student WHERE klassekode = ?");
-        $cntStmt->bind_param("s", $kode);
-        $cntStmt->execute();
-        $cntStmt->bind_result($antall);
-        $cntStmt->fetch();
-        $cntStmt->close();
+    $klassekode = trim($_POST['klassekode'] ?? '');
+    $klassenavn = trim($_POST['klassenavn'] ?? '');
+    $studiumkode = trim($_POST['studiumkode'] ?? '');
 
-        if ($antall > 0) {
-            // Brukervennlig melding – ingen Fatal
-            $err = "Kan ikke slette: {$antall} student(er) er knyttet til klasse '{$kode}'.";
+    if ($klassekode === '' || $klassenavn === '' || $studiumkode === '') {
+        $err = "Vennligst fyll ut alle felt.";
+    } else {
+        // Først: sjekk om klassekoden allerede finnes
+        $sjekk = $conn->prepare("SELECT klassekode FROM klasse WHERE klassekode = ?");
+        $sjekk->bind_param("s", $klassekode);
+        $sjekk->execute();
+        $sjekk->store_result();
+
+        if ($sjekk->num_rows > 0) {
+            // Klassen finnes fra før
+            $err = "Klassekoden '{$klassekode}' finnes allerede. Prøv en annen kode.";
         } else {
-            // 2) Forsøk sletting, og håndter FK-feil (1451) hvis noe glipper
-            $stmt = $conn->prepare("DELETE FROM klasse WHERE klassekode = ?");
-            $stmt->bind_param("s", $kode);
+            // Klassen finnes ikke, så vi legger den inn
+            $stmt = $conn->prepare("INSERT INTO klasse (klassekode, klassenavn, studiumkode) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $klassekode, $klassenavn, $studiumkode);
+
             if ($stmt->execute()) {
-                if ($stmt->affected_rows > 0) {
-                    $ok = "Klasse '{$kode}' ble slettet.";
-                } else {
-                    $err = "Fant ikke klassen.";
-                }
+                $ok = "Klassen '{$klassekode}' ble registrert!";
             } else {
-                // 1451 = foreign key constraint (kan ikke slette forelder med barn)
-                if ($conn->errno == 1451) {
-                    $err = "Kan ikke slette: det finnes studenter som er knyttet til klasse '{$kode}'.";
-                } else {
-                    $err = "Sletting mislyktes. Prøv igjen.";
-                }
+                // Fanger alle andre typer feil
+                $err = "Noe gikk galt under registrering: " . htmlspecialchars($stmt->error);
             }
+
             $stmt->close();
         }
+
+        $sjekk->close();
     }
 }
-
-// Hent/oppdater liste til nedtrekksmenyen (refresher etter sletting)
-$list = $conn->query("SELECT klassekode, klassenavn FROM klasse ORDER BY klassekode");
-$klasser = $list ? $list->fetch_all(MYSQLI_ASSOC) : [];
 ?>
+
 <!doctype html>
 <html lang="no">
 <head>
   <meta charset="utf-8">
-  <title>Slett klasse</title>
+  <title>Registrer klasse</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:2rem;}
-    select,button{padding:.6rem;border-radius:8px;border:1px solid #ccc;min-width:320px}
-    .row{margin:.6rem 0}
-    .msg{padding:.7rem;border-radius:8px;margin:.7rem 0;max-width:520px}
-    .ok{background:#e8f7ee;border:1px solid #9cd7b4}
-    .err{background:#fdeaea;border:1px solid #f2a3a3}
-    a{color:#1a1a1a}
+    body {font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem;}
+    input, button {padding: .6rem; border-radius: 8px; border: 1px solid #ccc; min-width: 320px;}
+    .row {margin: .6rem 0;}
+    .msg {padding: .7rem; border-radius: 8px; margin: .7rem 0; max-width: 520px;}
+    .ok {background: #e8f7ee; border: 1px solid #9cd7b4;}
+    .err {background: #fdeaea; border: 1px solid #f2a3a3;}
+    a {color: #1a1a1a;}
   </style>
 </head>
 <body>
   <p><a href="index.php">← Tilbake</a></p>
-  <h1>Slett klasse</h1>
+  <h1>Registrer ny klasse</h1>
 
   <?php if ($ok): ?><div class="msg ok"><?= htmlspecialchars($ok) ?></div><?php endif; ?>
   <?php if ($err): ?><div class="msg err"><?= htmlspecialchars($err) ?></div><?php endif; ?>
 
-  <form method="post" onsubmit="return confirm('Slette valgt klasse?')">
+  <form method="post">
     <div class="row">
-      <select name="klassekode" required>
-        <option value="">— Velg klasse —</option>
-        <?php foreach ($klasser as $k): ?>
-          <option value="<?= htmlspecialchars($k['klassekode']) ?>">
-            <?= htmlspecialchars($k['klassekode'].' – '.$k['klassenavn']) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
+      <label>Klassekode:<br>
+        <input type="text" name="klassekode" maxlength="5" required>
+      </label>
     </div>
-    <div class="row"><button type="submit">Slett</button></div>
+    <div class="row">
+      <label>Klassenavn:<br>
+        <input type="text" name="klassenavn" maxlength="50" required>
+      </label>
+    </div>
+    <div class="row">
+      <label>Studiumkode:<br>
+        <input type="text" name="studiumkode" maxlength="50" required>
+      </label>
+    </div>
+    <div class="row">
+      <button type="submit">Registrer</button>
+    </div>
   </form>
 </body>
 </html>
-
