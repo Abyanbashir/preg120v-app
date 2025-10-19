@@ -1,25 +1,3 @@
-<?php
-require_once __DIR__ . '/db.php';
-
-$ok = $err = null;
-
-// til listeboks
-$sql = "SELECT s.brukernavn, s.fornavn, s.etternavn FROM student s ORDER BY s.brukernavn";
-$res = $conn->query($sql);
-$studenter = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $bn = $_POST['brukernavn'] ?? '';
-    if ($bn === '') {
-        $err = "Velg en student å slette.";
-    } else {
-        $stmt = $conn->prepare("DELETE FROM student WHERE brukernavn = ?");
-        $stmt->bind_param("s", $bn);
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) $ok = "Student slettet.";
-            else $err = "Fant ikke studenten.";
-        } else {
-            $err = "Ukjent feil under sletting.";
         }
         $stmt->close();
     }
