@@ -7,7 +7,7 @@ $sql = "SELECT klassekode, klassenavn, studiumkode FROM klasse ORDER BY klasseko
 $res = $conn->query($sql);
 $klasser = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 ?>
-<!doctype html>
+<!doctype htmlk
 <html lang="no">
 <head>
   <meta charset="utf-8">

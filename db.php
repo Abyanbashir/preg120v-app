@@ -13,5 +13,5 @@ if ($conn->connect_error) {
 }
 
 // Hvis du vil teste at alt virker:
-// echo "Koblet til databasen!";
+// echo "Koblet til databasen!"; 
 ?>
