@@ -100,4 +100,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="row"><button type="submit">Slett</button></div>
   </form>
 </body>
-          </html>
+</html>
