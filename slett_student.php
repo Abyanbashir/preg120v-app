@@ -10,7 +10,7 @@ $sql = "SELECT s.brukernavn, s.fornavn, s.etternavn FROM student s ORDER BY s.br
 $res = $conn->query($sql);
 $studenter = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { h
     $bn = $_POST['brukernavn'] ?? '';
     if ($bn === '') {
         $err = "Velg en student å slette.";
